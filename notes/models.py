@@ -1,10 +1,14 @@
-from sqlalchemy import Column, Integer, String
-from .database import Base
+# Use SQLAlchemy to define models
+from sqlalchemy import Table, Column, Integer, String
+from sqlalchemy.sql.schema import MetaData
+
+metadata = MetaData()
 
 
-class NoteModel(Base):
-    __tablename__ = "notes"
-
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
-    content = Column(String, index=True)
+notes = Table(
+    "notes",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("title", String),
+    Column("content", String),
+)
