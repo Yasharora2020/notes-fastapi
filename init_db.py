@@ -1,10 +1,8 @@
+from notes.models import metadata
 from notes.database import engine
-from notes.models import Base
-
 
 def init_db():
-    Base.metadata.create_all(bind=engine)
-
+    metadata.create_all(bind=engine)
 
 if __name__ == "__main__":
     init_db()

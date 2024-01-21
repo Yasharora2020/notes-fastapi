@@ -1,3 +1,39 @@
+
+# File: init_db.py
+
+from notes.database import engine
+from notes.models import Base
+
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+
+
+if __name__ == "__main__":
+    init_db()
+
+# File: main.py
+
+from fastapi import FastAPI
+from notes.database import database
+from notes.routers.note_router import router as note_router
+
+
+app = FastAPI()
+app.include_router(note_router)
+
+
+@app.on_event("startup")
+async def startup():
+    await database.connect()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await database.disconnect()
+
+
+# File: routers/note_router.py
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
@@ -15,22 +51,17 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 @router.post("/users/", response_model=schemas.UserCreate)
 async def create_user(user: schemas.UserCreate):
     hashed_password = auth.get_password_hash(user.password)
-    query = models.users.insert().values(username=user.username, hashed_password=hashed_password)
-    last_record_id = await database.execute(query)
-    return {**user.dict(), "id": last_record_id}
-
+    db_user = models.users(username=user.username, hashed_password=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 # User login endpoint
 @router.post("/token", response_model=schemas.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     # Implement the logic for user login and token generation
-    user = await auth.authenticate_user(form_data.username, form_data.password)
-    #print(user.id)
-    #print(user.username)
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    access_token = auth.create_access_token(data={"sub": user.username, "user_id": user.id})
-    return {"access_token": access_token, "token_type": "bearer"}
+    pass
 
 # CRUD operations for notes
 @router.post("/notes/", response_model=schemas.Note)
@@ -68,3 +99,22 @@ async def delete_note(note_id: int, current_user: schemas.User = Depends(get_cur
     delete_query = models.notes.delete().where(models.notes.c.id == note_id, models.notes.c.user_id == current_user.id)
     await database.execute(delete_query)
     return {"detail": "Note deleted successfully"}
+
+
+# File: ../main.py
+from fastapi import FastAPI
+from notes.database import database
+from notes.routers.note_router import router as note_router
+
+
+app = FastAPI()
+app.include_router(note_router)
+
+
+@app.on_event("startup")
+async def startup():
+    await database.connect()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await database.disconnect()
